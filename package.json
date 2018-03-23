@@ -1,0 +1,22 @@
+{
+  "name": "rn-server",
+  "version": "1.0.0",
+  "description": "remote node server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inu1255/rn-server.git"
+  },
+  "keywords": [
+    "remote"
+  ],
+  "author": "inu1255",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/inu1255/rn-server/issues"
+  },
+  "homepage": "https://github.com/inu1255/rn-server#readme"
+}
