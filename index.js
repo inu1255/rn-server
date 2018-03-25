@@ -2,19 +2,28 @@ const http = require("http");
 const https = require("https");
 const URL = require("url");
 const config = require("./common/config");
+const utils = require("./common/utils");
 
-console.log(config.main);
 config.main = __filename;
+
+function client(req, res, next) {
+    if (req.pathname == "/client") {
+        console.log(`get client from ${req.headers["referer"]}`);
+        res.writeHead(200);
+        res.write(utils.makeClient());
+        res.end();
+    } else next();
+}
 
 function cross(req, res, next) {
     const origin = req.headers["origin"];
     if (origin) {
+        let header = req.headers["access-control-request-headers"];
         res.setHeader("Access-Control-Allow-Origin", origin);
         res.setHeader("Access-Control-Allow-Credentials", "true");
-        res.setHeader("Access-Control-Allow-Headers", "content-type");
+        header && res.setHeader("Access-Control-Allow-Headers", header);
     }
-    if (req.method == "OPTION") {
-        res.writeHead(200);
+    if (req.method == "OPTIONS") {
         res.end();
     } else {
         next();
@@ -32,6 +41,7 @@ function auth(req, res, next) {
 function proxy(req, res, next) {
     let url = req.headers['rn-proxy'];
     if (url) {
+        console.log(`proxy to ${url}`);
         let HTTP = http;
         if (url.startsWith('https://'))
             HTTP = https;
@@ -65,18 +75,18 @@ function proxy(req, res, next) {
 }
 
 function action(req, res, next) {
-    let mod = req.headers['rn-action'];
-    if (mod) {
+    let name = req.headers['rn-action'];
+    if (name) {
         try {
-            mod = require("./common/" + mod);
-            let u = URL.parse(req.url);
+            let mod = require("./lib/" + name);
             let s = "";
             req.on("data", function(chunk) {
                 s += chunk;
             });
             req.on("end", function() {
                 try {
-                    mod[u.pathname.replace(/\//, "")].apply(mod, JSON.parse(s || "[]")).then(function(data) {
+                    console.log(name + req.pathname.replace(/\//g, ".") + (s ? s.replace("[", "(").replace("]", ")") : "()"));
+                    mod[req.pathname.replace(/\//, "")].apply(mod, JSON.parse(s || "[]")).then(function(data) {
                         res.writeHead(200, { "Content-Type": "application/json" });
                         res.write(JSON.stringify({ no: 200, data }));
                         res.end();
@@ -100,7 +110,8 @@ function action(req, res, next) {
 }
 
 let app = http.createServer(function(req, res) {
-    [auth, cross, proxy, action].reverse().map(x => next => x(req, res, next || (() => console.log("end")))).reduce((a, b) => () => b(a))();
+    Object.assign(req, URL.parse(req.url));
+    [client, cross, auth, proxy, action].reverse().map(x => next => x(req, res, next || (() => console.log("end")))).reduce((a, b) => () => b(a))();
 });
 
 app.listen(config.port);
